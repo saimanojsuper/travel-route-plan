@@ -1,5 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import { DEFAULT_HISTORY_LIMIT } from '../constants/schema'
+import { DEFAULT_TRIP_PLAN } from '../data/defaultTripPlan'
 import { tripPlanSchema } from '../schemas/tripSchema'
 import {
   getBrowserDraftStorage,
@@ -38,6 +39,15 @@ export interface TripStoreOptions {
   draftStorage?: DraftStorage
   historyLimit?: number
   initialPlan?: TripPlan | null
+  /**
+   * A bundled starter plan to load automatically when there is no existing
+   * local recovery draft (a genuine first load, or storage cleared). Ignored
+   * whenever `initialPlan` is explicitly provided, so tests that need a
+   * precise blank or seeded state are unaffected. Defaults to `undefined`
+   * (no bootstrap), so only callers that opt in (the app's singleton store)
+   * see this behavior.
+   */
+  defaultPlan?: TripPlan | null
 }
 
 function errorMessage(error: unknown): string {
@@ -58,7 +68,20 @@ export function createTripStore(options: TripStoreOptions = {}): StoreApi<TripSt
   } catch (error) {
     initialStorageError = errorMessage(error)
   }
-  if (recoveredPlan) recoveredPlan = tripPlanSchema.parse(recoveredPlan)
+
+  if (recoveredPlan) {
+    recoveredPlan = tripPlanSchema.parse(recoveredPlan)
+  } else if (options.initialPlan === undefined && !initialStorageError && options.defaultPlan) {
+    // Genuinely empty storage (no draft, no read error): bootstrap with the bundled
+    // starter plan, validated like any other plan, and autosave it immediately so
+    // it behaves exactly like a freshly created trip from this point on.
+    recoveredPlan = tripPlanSchema.parse(options.defaultPlan)
+    try {
+      storage.save(recoveredPlan)
+    } catch (error) {
+      initialStorageError = errorMessage(error)
+    }
+  }
 
   return createStore<TripStoreState>()((set, get) => {
     function persist(plan: TripPlan | null): void {
@@ -143,4 +166,4 @@ export function createTripStore(options: TripStoreOptions = {}): StoreApi<TripSt
   })
 }
 
-export const tripStore = createTripStore()
+export const tripStore = createTripStore({ defaultPlan: DEFAULT_TRIP_PLAN })

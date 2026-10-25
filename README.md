@@ -22,6 +22,7 @@ npm run build
 ## Plan data
 
 - Valid changes autosave a recovery draft to this browser's `localStorage`.
+- On a genuinely first load (no local draft exists yet, e.g. a fresh browser or after clearing data), the app automatically loads a bundled starter plan — a sample "Rajasthan Circuit" trip — as a normal, fully editable plan, validated through the same schema as any import. It autosaves immediately, so from that point on it behaves exactly like any plan you built yourself; edit or replace it freely. See `src/data/defaultTripPlan.ts`.
 - Use **Data & settings** to export the complete plan as a versioned JSON file, preview and import a backup, clear local recovery, or start a new plan.
 - Import validates the file before replacement. Invalid or cancelled imports leave the current plan untouched.
 - Clearing local recovery or starting a new plan both immediately clear the active plan, session undo history, and local recovery draft after an in-app confirmation step (no native browser dialogs), landing back on the setup screen with no reload required.
