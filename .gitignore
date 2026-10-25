@@ -11,6 +11,9 @@ coverage/
 !.env.example
 *.local
 
+# Scratch/local-only data files (never committed)
+scratch-*.json
+
 # Editor, test-router state, logs, and operating-system files
 .wibey-test/
 .vscode/
