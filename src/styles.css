@@ -110,6 +110,7 @@ select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgb(21 95 69 / 
 .route-stop-card { position: relative; border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; background: white; }
 .route-stop-card.dragging { z-index: 3; box-shadow: 0 18px 36px rgb(20 45 33 / 16%); opacity: 0.86; }
 .stop-card-heading { display: flex; align-items: center; gap: 0.65rem; }
+.move-buttons { display: inline-flex; gap: 0.3rem; flex: 0 0 auto; }
 .city-field { flex: 1; }
 .city-field input { border: 0; padding: 0.35rem; font-size: 1.08rem; font-weight: 800; }
 .duration-badge { border-radius: 999px; padding: 0.35rem 0.6rem; color: var(--green-dark); background: #e7f0eb; font-size: 0.74rem; font-weight: 800; white-space: nowrap; }

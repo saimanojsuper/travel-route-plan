@@ -29,7 +29,7 @@ export function BudgetSummary({ plan }: { plan: TripPlan }) {
 
   return (
     <section className="budget-workspace" aria-labelledby="budget-heading">
-      <div className="workspace-heading"><div><p className="eyebrow">INR only</p><h2 id="budget-heading">Trip budget</h2><p>Compare your target with costs recorded on itinerary activities.</p></div></div>
+      <div className="workspace-heading"><div><p className="eyebrow">INR only</p><h2 id="budget-heading">Trip budget</h2><p>Compare your target with costs recorded on itinerary activities and must-taste food entries.</p></div></div>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="budget-grid">
         <article className="panel budget-card target-card"><span>Budget target</span><strong>{snapshot.targetInr === null ? 'Not set' : formatInr(snapshot.targetInr)}</strong></article>

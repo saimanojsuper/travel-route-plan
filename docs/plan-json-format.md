@@ -2,6 +2,15 @@
 
 Trip plans are portable UTF-8 JSON documents. Version `1` is the only currently supported schema version. The runtime source of truth is `src/schemas/tripSchema.ts`; TypeScript consumers can use the interfaces in `src/types/trip.ts`.
 
+## Import, export, and recovery
+
+- Export validates the active plan, pretty-prints the complete document as UTF-8 JSON, and downloads it with a title/date-based filename.
+- Import accepts local `.json` files up to 5 MiB, validates the schema and cross-record rules, then shows a summary before replacement. Parsing, validation, and cancellation never mutate the active plan.
+- Unsupported schema versions are rejected explicitly. Version `1` remains unchanged.
+- Confirmed imports replace the active plan as one undoable change and become the latest local recovery draft.
+- Valid edits autosave a recovery draft in browser `localStorage`. Recovery is browser/device-specific and is not a substitute for an exported backup.
+- Clearing local recovery does not alter the active in-memory plan. Starting a new plan clears the active plan, undo history, and recovery draft after confirmation.
+
 ## Validation rules
 
 - Objects are strict: unknown properties are rejected so misspelled fields do not silently disappear.

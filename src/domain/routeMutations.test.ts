@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createValidPlan } from '../test/fixtures'
 import { resolutionKey } from './dateChangeResolver'
-import { deleteRouteStop, reorderRouteStops } from './routeMutations'
+import { addRouteStop, deleteRouteStop, editRouteStops, reorderRouteStops } from './routeMutations'
 
 function sequentialIds(prefix = 'generated') {
   let next = 0
@@ -75,5 +75,90 @@ describe('route mutations', () => {
     expect(result.activities.map((activity) => activity.id)).toEqual(['activity-1'])
     expect(result.foodEntries).toEqual([])
     expect(result.arrivalDepartureEvents).toEqual([])
+  })
+
+  it('adds a new destination, reallocates trip dates across every stop, and rebuilds travel legs', () => {
+    const plan = createValidPlan()
+    const widened = {
+      ...plan,
+      metadata: { ...plan.metadata, endDate: '2026-11-04' },
+      routeStops: [
+        { id: 'stop-delhi', city: 'Delhi', startDate: '2026-11-01', endDate: '2026-11-02', order: 0 },
+        { id: 'stop-agra', city: 'Agra', startDate: '2026-11-03', endDate: '2026-11-04', order: 1 },
+      ],
+      days: [
+        { id: 'day-1', routeStopId: 'stop-delhi', date: '2026-11-01', dayNumber: 1, isLeisure: false },
+        { id: 'day-2', routeStopId: 'stop-delhi', date: '2026-11-02', dayNumber: 2, isLeisure: true },
+        { id: 'day-3', routeStopId: 'stop-agra', date: '2026-11-03', dayNumber: 3, isLeisure: false },
+        { id: 'day-4', routeStopId: 'stop-agra', date: '2026-11-04', dayNumber: 4, isLeisure: true },
+      ],
+      activities: [],
+      foodEntries: [],
+      arrivalDepartureEvents: [],
+    }
+    const updatedAt = '2026-10-25T11:00:00Z'
+
+    const draft = addRouteStop(widened, { id: 'stop-jaipur', city: 'Jaipur' }, updatedAt, sequentialIds())
+
+    expect(draft.routeStops).toEqual([
+      { id: 'stop-delhi', city: 'Delhi', startDate: '2026-11-01', endDate: '2026-11-02', order: 0 },
+      { id: 'stop-agra', city: 'Agra', startDate: '2026-11-03', endDate: '2026-11-03', order: 1 },
+      { id: 'stop-jaipur', city: 'Jaipur', startDate: '2026-11-04', endDate: '2026-11-04', order: 2 },
+    ])
+    expect(draft.requiredDayChanges).toEqual([])
+
+    const result = draft.finalize()
+    expect(result.metadata.updatedAt).toBe(updatedAt)
+    expect(result.travelLegs).toEqual([
+      { id: 'leg-1', fromStopId: 'stop-delhi', toStopId: 'stop-agra', order: 0, transportMode: 'train', mapsUrl: 'https://maps.google.com/?q=Agra' },
+      { id: 'generated-1', fromStopId: 'stop-agra', toStopId: 'stop-jaipur', order: 1 },
+    ])
+    expect(result.days.map(({ routeStopId, date, dayNumber }) => ({ routeStopId, date, dayNumber }))).toEqual([
+      { routeStopId: 'stop-delhi', date: '2026-11-01', dayNumber: 1 },
+      { routeStopId: 'stop-delhi', date: '2026-11-02', dayNumber: 2 },
+      { routeStopId: 'stop-agra', date: '2026-11-03', dayNumber: 3 },
+      { routeStopId: 'stop-jaipur', date: '2026-11-04', dayNumber: 4 },
+    ])
+  })
+
+  it('rejects reordering that omits or duplicates a stop instead of silently dropping data', () => {
+    const plan = createValidPlan()
+    const updatedAt = '2026-10-25T10:30:00Z'
+
+    expect(() => reorderRouteStops(plan, ['stop-delhi'], updatedAt, sequentialIds()))
+      .toThrow('Reordered stops must include every route stop exactly once')
+    expect(() => reorderRouteStops(plan, ['stop-delhi', 'stop-delhi'], updatedAt, sequentialIds()))
+      .toThrow('Reordered stops must include every route stop exactly once')
+    expect(() => reorderRouteStops(plan, ['stop-delhi', 'unknown-stop'], updatedAt, sequentialIds()))
+      .toThrow('Unknown route stop: unknown-stop')
+  })
+
+  it('rejects manual edits that add, remove, or substitute a stop rather than updating one in place', () => {
+    const plan = createValidPlan()
+    const updatedAt = '2026-10-25T10:45:00Z'
+
+    expect(() => editRouteStops(plan, [plan.routeStops[0]!], updatedAt, sequentialIds()))
+      .toThrow('Manual route edits must retain every stop; use add or delete for structural changes')
+    expect(() => editRouteStops(
+      plan,
+      [plan.routeStops[0]!, { ...plan.routeStops[1]!, id: 'stop-unknown' }],
+      updatedAt,
+      sequentialIds(),
+    )).toThrow('Manual route edits must retain every stop; use add or delete for structural changes')
+  })
+
+  it('rejects deleting an unknown stop or the last remaining stop', () => {
+    const plan = createValidPlan()
+    const updatedAt = '2026-10-25T11:15:00Z'
+
+    expect(() => deleteRouteStop(plan, 'unknown-stop', updatedAt, sequentialIds()))
+      .toThrow('Route stop does not exist')
+
+    const singleStopPlan = {
+      ...plan,
+      routeStops: [plan.routeStops[0]!],
+    }
+    expect(() => deleteRouteStop(singleStopPlan, 'stop-delhi', updatedAt, sequentialIds()))
+      .toThrow('A trip must keep at least one route stop')
   })
 })

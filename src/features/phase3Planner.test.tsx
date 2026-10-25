@@ -190,6 +190,21 @@ describe('departure-driven trip extension', () => {
 })
 
 describe('planner itinerary UI', () => {
+  it('renders the overlap warning for two same-day activities scheduled with only a start time and duration (QA repro: 10:00 and 10:30)', () => {
+    const plan = createValidPlan()
+    plan.activities = [
+      { ...plan.activities[0]!, id: 'first', title: 'Fort tour', startTime: '10:00', endTime: undefined, durationMinutes: 60, order: 0 },
+      { ...plan.activities[0]!, id: 'second', title: 'Market walk', startTime: '10:30', endTime: undefined, durationMinutes: 60, slot: 'morning', order: 1 },
+    ]
+    render(<ItineraryBoard plan={plan} />)
+
+    const warnings = screen.getAllByText('Time overlaps another activity on this day.')
+    expect(warnings).toHaveLength(2)
+    expect(warnings[0]).toHaveAttribute('role', 'status')
+    expect(screen.getByRole('heading', { name: 'Fort tour' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Market walk' })).toBeInTheDocument()
+  })
+
   it('commits status and day-note/leisure changes through the planner store', () => {
     const plan = createValidPlan()
     render(<ItineraryBoard plan={plan} />)
@@ -223,5 +238,36 @@ describe('planner itinerary UI', () => {
     expect(screen.getByRole('heading', { name: 'Destinations & travel' })).toBeInTheDocument()
     expect(screen.getByLabelText('New end date')).toHaveAttribute('min', '2026-11-04')
     expect(screen.getByRole('button', { name: 'Extend trip' })).toBeDisabled()
+  })
+})
+
+describe('route stop reordering', () => {
+  it('reorders stops via accessible move buttons, without pointer-based drag (QA repro: clicking the reorder control)', () => {
+    const plan = { ...createValidPlan(), activities: [], foodEntries: [], arrivalDepartureEvents: [] }
+    tripStore.setState({ history: createHistory(plan), ui: { isDirty: false, lastStorageError: null }, hasRecoveryDraft: true })
+    render(<RouteTimeline plan={plan} />)
+
+    expect(screen.getByRole('button', { name: 'Move Delhi up' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move Agra down' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move Delhi down' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move Agra up' })).not.toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move Agra up' }))
+
+    const history = tripStore.getState().history
+    expect(history.past).toHaveLength(1)
+    const saved = history.present!
+    expect(saved.routeStops.map((stop) => ({ id: stop.id, city: stop.city, order: stop.order }))).toEqual([
+      { id: 'stop-agra', city: 'Agra', order: 0 },
+      { id: 'stop-delhi', city: 'Delhi', order: 1 },
+    ])
+  })
+
+  it('also exposes a working drag handle labeled for what it actually does, not a misleading click-to-reorder affordance', () => {
+    const plan = createValidPlan()
+    render(<RouteTimeline plan={plan} />)
+
+    expect(screen.getByRole('button', { name: 'Drag to reorder Delhi' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reorder Delhi' })).not.toBeInTheDocument()
   })
 })

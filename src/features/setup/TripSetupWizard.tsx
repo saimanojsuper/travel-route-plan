@@ -153,7 +153,7 @@ export function TripSetupWizard() {
     <main className="setup-shell">
       <header className="setup-heading">
         <p className="eyebrow">New multi-city trip</p>
-        <h1>Build the route first.</h1>
+        <h1>Build the route before the itinerary</h1>
         <p>We will spread every trip date across your destinations. You can fine-tune the ranges afterward.</p>
       </header>
 

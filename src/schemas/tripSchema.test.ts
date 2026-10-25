@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest'
+import { CURRENT_SCHEMA_VERSION } from '../constants/schema'
 import { createValidPlan } from '../test/fixtures'
 import { tripPlanSchema } from './tripSchema'
 
 describe('tripPlanSchema', () => {
   it('accepts a complete, internally consistent plan', () => {
     expect(tripPlanSchema.safeParse(createValidPlan()).success).toBe(true)
+  })
+
+  it('rejects a schema version other than the current supported version', () => {
+    const result = tripPlanSchema.safeParse({ ...createValidPlan(), schemaVersion: CURRENT_SCHEMA_VERSION + 1 })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: ['schemaVersion'] }),
+      ]))
+    }
   })
 
   it('rejects bad ranges, references, costs, and URL protocols', () => {
