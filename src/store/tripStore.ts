@@ -26,6 +26,7 @@ export interface TripStoreState {
   replacePlan(plan: TripPlan): void
   updatePlan(updater: (plan: TripPlan) => TripPlan): void
   clearPlan(): void
+  resetPlan(): void
   undo(): void
   redo(): void
   markExported(): void
@@ -95,6 +96,19 @@ export function createTripStore(options: TripStoreOptions = {}): StoreApi<TripSt
 
       clearPlan() {
         applyHistory(pushHistory(get().history, null, historyLimit))
+      },
+
+      resetPlan() {
+        try { storage.clear() }
+        catch (error) {
+          set({ ui: { ...get().ui, lastStorageError: errorMessage(error) } })
+          return
+        }
+        set({
+          history: createHistory(null),
+          hasRecoveryDraft: false,
+          ui: { isDirty: false, lastStorageError: null },
+        })
       },
 
       undo() {

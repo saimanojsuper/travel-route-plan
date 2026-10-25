@@ -18,9 +18,9 @@ export function createLocalDraftStorage(storage?: StorageLike | null): DraftStor
   return {
     load() {
       if (!storage) return null
+      const serialized = storage.getItem(LOCAL_DRAFT_STORAGE_KEY)
+      if (!serialized) return null
       try {
-        const serialized = storage.getItem(LOCAL_DRAFT_STORAGE_KEY)
-        if (!serialized) return null
         const parsed: unknown = JSON.parse(serialized)
         const result = tripPlanSchema.safeParse(parsed)
         return result.success ? result.data : null
@@ -30,7 +30,8 @@ export function createLocalDraftStorage(storage?: StorageLike | null): DraftStor
     },
     save(plan) {
       if (!storage) return
-      storage.setItem(LOCAL_DRAFT_STORAGE_KEY, JSON.stringify(plan))
+      const validPlan = tripPlanSchema.parse(plan)
+      storage.setItem(LOCAL_DRAFT_STORAGE_KEY, JSON.stringify(validPlan))
     },
     clear() {
       if (!storage) return
@@ -40,11 +41,12 @@ export function createLocalDraftStorage(storage?: StorageLike | null): DraftStor
 }
 
 export function getBrowserDraftStorage(): DraftStorage {
-  let storage: StorageLike | null = null
+  if (typeof window === 'undefined') return createLocalDraftStorage(null)
   try {
-    storage = typeof window === 'undefined' ? null : window.localStorage
-  } catch {
-    // Access itself can throw when storage is disabled by browser policy.
+    return createLocalDraftStorage(window.localStorage)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Browser storage is unavailable'
+    const unavailable = () => { throw new Error(message) }
+    return { load: unavailable, save: unavailable, clear: unavailable }
   }
-  return createLocalDraftStorage(storage)
 }

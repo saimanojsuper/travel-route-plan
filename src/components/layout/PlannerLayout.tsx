@@ -9,12 +9,14 @@ export function PlannerLayout({
   plan,
   activeSection,
   onSectionChange,
+  onOpenSettings,
   children,
   routePanel,
 }: {
   plan: TripPlan
   activeSection: PlannerSection
   onSectionChange(section: PlannerSection): void
+  onOpenSettings(): void
   children: React.ReactNode
   routePanel: React.ReactNode
 }) {
@@ -28,7 +30,7 @@ export function PlannerLayout({
     <main className="planner-shell phase-three-shell">
       <header className="planner-header">
         <div><p className="eyebrow">Trip workspace</p><h1>{plan.metadata.title}</h1><p>{plan.metadata.startDate} → {plan.metadata.endDate} · {plan.days.length} days</p></div>
-        <div className="history-actions"><button className="button secondary small" type="button" disabled={!canUndo} onClick={undo}>Undo</button><button className="button secondary small" type="button" disabled={!canRedo} onClick={redo}>Redo</button></div>
+        <div className="history-actions"><button className="button secondary small" type="button" disabled={!canUndo} onClick={undo}>Undo</button><button className="button secondary small" type="button" disabled={!canRedo} onClick={redo}>Redo</button><button className="button secondary small" type="button" onClick={onOpenSettings}>Data & settings</button></div>
       </header>
       {plan.metadata.coverImageUrl && <img className="cover-image planner-cover" src={plan.metadata.coverImageUrl} alt="" />}
       {storageError && <p className="warning-banner">Draft could not be saved locally: {storageError}</p>}
