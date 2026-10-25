@@ -4,7 +4,7 @@ import type { Activity } from '../types/trip'
 import { updateTripDay } from './itineraryMutations'
 import { conflictingActivityIds, findTimeConflicts } from './timeConflicts'
 
-function timedActivity(id: string, dayId: string, startTime?: string, endTime?: string): Activity {
+function timedActivity(id: string, dayId: string, startTime?: string, endTime?: string, durationMinutes?: number): Activity {
   return {
     id,
     dayId,
@@ -13,6 +13,7 @@ function timedActivity(id: string, dayId: string, startTime?: string, endTime?: 
     slot: 'morning',
     startTime,
     endTime,
+    durationMinutes,
     category: 'sightseeing',
     status: 'planned',
     order: 0,
@@ -72,5 +73,39 @@ describe('exact-time conflicts', () => {
     expect(findTimeConflicts([outer, inner])).toEqual([
       { firstActivityId: 'outer', secondActivityId: 'inner', overlapMinutes: 30 },
     ])
+  })
+
+  it('derives an end time from duration when no explicit end time is set (QA repro: 10:00 and 10:30 same-day overlap)', () => {
+    const activities = [
+      timedActivity('first', 'day-1', '10:00', undefined, 60),
+      timedActivity('second', 'day-1', '10:30', undefined, 60),
+    ]
+
+    expect(findTimeConflicts(activities)).toEqual([
+      { firstActivityId: 'first', secondActivityId: 'second', overlapMinutes: 30 },
+    ])
+    expect(conflictingActivityIds(activities)).toEqual(new Set(['first', 'second']))
+  })
+
+  it('flags overlaps between an explicit end time and a duration-derived end time', () => {
+    const activities = [
+      timedActivity('explicit-end', 'day-1', '10:00', '11:00'),
+      timedActivity('duration-only', 'day-1', '10:30', undefined, 45),
+    ]
+
+    expect(findTimeConflicts(activities)).toEqual([
+      { firstActivityId: 'explicit-end', secondActivityId: 'duration-only', overlapMinutes: 30 },
+    ])
+  })
+
+  it('does not flag a duration-derived end time that only touches, or a start time with neither end time nor duration', () => {
+    const activities = [
+      timedActivity('first', 'day-1', '10:00', undefined, 30),
+      timedActivity('touching', 'day-1', '10:30', undefined, 30),
+      timedActivity('no-extent', 'day-1', '10:15'),
+    ]
+
+    expect(findTimeConflicts(activities)).toEqual([])
+    expect(conflictingActivityIds(activities).size).toBe(0)
   })
 })

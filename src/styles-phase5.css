@@ -33,6 +33,9 @@
 .local-controls .danger-zone { margin-top: 0.5rem; border-color: #e5baba; }
 .danger-button { border-color: #a62f2f; background: #a62f2f; }
 .danger-button:hover { background: #792020; }
+.confirm-inline { margin: 0.5rem 0 1rem; border: 1px solid #e5baba; border-radius: 0.75rem; padding: 0.9rem 1rem; background: #fff6f5; }
+.confirm-inline p { margin: 0 0 0.6rem; color: #5a2323; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
 
 @media (max-width: 680px) {
   .settings-shell { width: min(100% - 1rem, 62rem); padding-top: 1.5rem; }

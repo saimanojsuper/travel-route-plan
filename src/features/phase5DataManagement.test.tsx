@@ -114,42 +114,66 @@ describe('Phase 5 data management UI', () => {
     expect(tripStore.getState().history).toBe(original)
   })
 
-  it('requires New Plan confirmation and resets only after confirmation', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  it('requires New Plan confirmation via an in-app dialog (no native window.confirm) and resets only after confirmation', () => {
+    const confirm = vi.spyOn(window, 'confirm')
     window.localStorage.setItem(LOCAL_DRAFT_STORAGE_KEY, JSON.stringify(createValidPlan()))
     render(<App />)
     openSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Start new plan' }))
+    expect(confirm).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Start a new plan? This permanently clears the active plan, undo history, and local recovery draft.',
+    )
     expect(tripStore.getState().history.present?.metadata.title).toBe('Golden Triangle')
-    expect(confirm).toHaveBeenCalledWith('Start a new plan? This permanently clears the active plan, undo history, and local recovery draft.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(tripStore.getState().history.present?.metadata.title).toBe('Golden Triangle')
 
     fireEvent.click(screen.getByRole('button', { name: 'Start new plan' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, start new plan' }))
+
     expect(tripStore.getState().history.present).toBeNull()
     expect(tripStore.getState().history.past).toEqual([])
     expect(tripStore.getState().ui.isDirty).toBe(false)
     expect(window.localStorage.getItem(LOCAL_DRAFT_STORAGE_KEY)).toBeNull()
+
+    // The setup screen must actually be showing, not a stale plan view left behind by a missed re-render.
+    expect(screen.queryByRole('heading', { name: 'Import, export & recovery' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Golden Triangle' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Build the route before the itinerary' })).toBeInTheDocument()
   })
 
-  it('clears the local draft synchronously, resetting the active plan and UI without any reload', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  it('clears the local draft via an in-app dialog (no native window.confirm), synchronously resetting the active plan and UI without any reload', () => {
+    const confirm = vi.spyOn(window, 'confirm')
     render(<App />)
     openSettings()
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear local draft' }))
-    expect(confirm).toHaveBeenCalledWith('Clear the browser recovery draft? This immediately clears the active plan and returns to setup.')
+    expect(confirm).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Clear the browser recovery draft? This immediately clears the active plan and returns to setup.',
+    )
     expect(tripStore.getState().history.present?.metadata.title).toBe('Golden Triangle')
     expect(screen.getByRole('heading', { name: 'Import, export & recovery' })).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(tripStore.getState().history.present?.metadata.title).toBe('Golden Triangle')
+
     fireEvent.click(screen.getByRole('button', { name: 'Clear local draft' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, clear draft' }))
+
     expect(tripStore.getState().history.present).toBeNull()
     expect(tripStore.getState().history.past).toEqual([])
     expect(tripStore.getState().hasRecoveryDraft).toBe(false)
     expect(tripStore.getState().ui.isDirty).toBe(false)
     expect(window.localStorage.getItem(LOCAL_DRAFT_STORAGE_KEY)).toBeNull()
 
+    // No stale plan should reappear: the setup screen renders in its place within the same render tree.
     expect(screen.queryByRole('heading', { name: 'Import, export & recovery' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Golden Triangle' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Build the route before the itinerary' })).toBeInTheDocument()
   })
 

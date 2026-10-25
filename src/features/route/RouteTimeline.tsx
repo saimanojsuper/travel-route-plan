@@ -73,6 +73,14 @@ export function RouteTimeline({ plan }: { plan: TripPlan }) {
     attempt(() => editRouteStops(plan, scheduled, new Date().toISOString(), createStableId))
   }
 
+  function moveStop(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= routeDraft.length) return
+    const reordered = arrayMove(routeDraft, index, targetIndex)
+    const scheduled = scheduleStopsByDuration(reordered, plan.metadata.startDate, plan.metadata.endDate)
+    attempt(() => editRouteStops(plan, scheduled, new Date().toISOString(), createStableId))
+  }
+
   function saveLeg(leg: TravelLeg) {
     try {
       replacePlan({
@@ -105,7 +113,7 @@ export function RouteTimeline({ plan }: { plan: TripPlan }) {
 
       <section className="panel route-section">
         <div className="section-heading">
-          <div><p className="eyebrow">{routeDraft.length} destinations</p><h2>Route timeline</h2><p>Drag to reorder. Date ranges must form one continuous trip with no gaps.</p></div>
+          <div><p className="eyebrow">{routeDraft.length} destinations</p><h2>Route timeline</h2><p>Drag to reorder, or use the move buttons. Date ranges must form one continuous trip with no gaps.</p></div>
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -117,6 +125,9 @@ export function RouteTimeline({ plan }: { plan: TripPlan }) {
                   stop={stop}
                   index={index}
                   canDelete={routeDraft.length > 1}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < routeDraft.length - 1}
+                  onMove={(direction) => moveStop(index, direction)}
                   onChange={(updated) => setRouteDraft((current) => current.map((candidate) => candidate.id === stop.id ? updated : candidate))}
                   onDelete={(target) => {
                     if (window.confirm(`Delete ${target.city}? Its activities and food entries will also be deleted.`)) {
